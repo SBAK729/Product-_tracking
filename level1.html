@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <title>Data Visualization</title>
+    <style>
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        }
+        .chart-wrapper {
+            position: relative;
+            margin: auto;
+            height: 60vh;
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        select, button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 10px;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <select id="chartType">
+                <option value="bar">Bar Chart</option>
+                <option value="line">Line Chart</option>
+                <option value="radar">Radar Chart</option>
+                <option value="polarArea">Polar Area</option>
+                <option value="doughnut">Doughnut</option>
+            </select>
+            <button id="toggleAnimation">Toggle Animation</button>
+            <button id="toggleDarkMode">Toggle Dark Mode</button>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        let myChart = null;
+        let isDarkMode = false;
+
+        function createGradient(ctx) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(54, 162, 235, 0.8)');
+            gradient.addColorStop(1, 'rgba(54, 162, 235, 0.2)');
+            return gradient;
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const chartType = document.getElementById('chartType').value;
+            
+            const labels = data.map(item => item.business_name);
+            const prices = data.map(item => item.price);
+
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            const config = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Prices of Nike Shoes In Birr',
+                        data: prices,
+                        backgroundColor: createGradient(ctx),
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    },
+                    plugins: {
+                        datalabels: {
+                            color: isDarkMode ? '#fff' : '#000',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: (value) => `${value} Birr`
+                        },
+                        legend: {
+                            labels: {
+                                color: isDarkMode ? '#fff' : '#000'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#fff' : '#000'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#fff' : '#000'
+                            }
+                        }
+                    }
+                }
+            };
+
+            myChart = new Chart(ctx, config);
+        }
+
+      
+        document.getElementById('chartType').addEventListener('change', () => {
+            fetch('data_fetch.php')
+                .then(response => response.json())
+                .then(data => updateChart(data))
+                .catch(error => console.error('Error:', error));
+        });
+
+        document.getElementById('toggleAnimation').addEventListener('click', () => {
+            if (myChart) {
+                myChart.options.animation.duration = 
+                    myChart.options.animation.duration > 0 ? 0 : 2000;
+                myChart.update();
+            }
+        });
+
+        document.getElementById('toggleDarkMode').addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.querySelector('.container').style.background = 
+                isDarkMode ? 'linear-gradient(to right, #1a1a1a, #2d2d2d)' : 
+                            'linear-gradient(to right, #f8f9fa, #e9ecef)';
+            fetch('data_fetch.php')
+                .then(response => response.json())
+                .then(data => updateChart(data))
+                .catch(error => console.error('Error:', error));
+        });
+
+     
+        fetch('data_fetch.php')
+            .then(response => response.json())
+            .then(data => updateChart(data))
+            .catch(error => console.error('Error fetching data:', error));
+    </script>
+</body>
+</html>

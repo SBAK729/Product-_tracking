@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <title>Data Visualization</title>
+  <link rel="stylesheet" href="./styles/styles.css">
+</head>
+<body>
+    <div class="overlay"></div>
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzRhOTBlMiIvPjwvc3ZnPg==" alt="Logo">
+                <span class="logo-text">Dashboard</span>
+            </div>
+           
+        </div>
+        
+        <div class="sidebar-menu">
+            <a href="./home" class="menu-item" data-tooltip="Home">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            
+            <a href="./product_tracking" class="menu-item "  data-tooltip="Product Tracking">
+                <i class="fas fa-box-open"></i>
+                <span>Product Tracking</span>
+                <span class="badge">New </span>
+            </a>
+            
+            <a href="./" class="menu-item active" data-tooltip="Data Visualization">
+                <i class="fas fa-chart-bar"></i>
+                <span>Data Visualization</span>
+            </a>
+          
+            
+            
+            
+            <a href="#settings" class="menu-item" data-tooltip="Settings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </a>
+        </div>
+
+        <div class="dark-mode-toggle">
+          
+            <button id="toggleDarkMode"><i class="fas fa-moon"></i>Mode </button>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="controls">
+            <div class="control-item">
+                <select id="chartType">
+                    <option value="bar">Bar Chart</option>
+                    <option value="line">Line Chart</option>
+                    <option value="doughnut">Dough Chart</option>
+                   
+                </select>
+            </div>
+          
+            
+            <div class="control-item">
+                <button id="downloadChart"><i class="fas fa-download"></i> Download</button>
+            </div>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="Search for a product...">
+        </div>
+        
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="myChart"></canvas>
+        </div>   
+        <div id="suggestions">
+            <div class="suggestion-chip" onclick="useSubject('Analyze product prices')">Analyze product prices</div>
+            <div class="suggestion-chip" onclick="useSubject('Find most expensive product')">Find most expensive product</div>
+            <div class="suggestion-chip" onclick="useSubject('Summarize product data')">Summarize product data</div>
+
+          
+        </div>
+        <div id="chat-container"></div>
+        <div id="input-container">
+            <input type="text" id="prompt-input" placeholder="Ask me anything about the product data...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const user_balance = '200';
+
+        const API_KEY = 'AIzaSyDHvQhgoiAVOikkORlZmSHy7Nm2B6WD6TI'; 
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+        let productData = []; 
+        let myChart = null;
+        let searchTimeout = null;
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+       
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+        }
+
+        document.getElementById('toggleDarkMode').addEventListener('click', () => {
+          
+            isDarkMode = !isDarkMode;
+            document.body.classList.toggle('dark-mode');
+
+            
+            localStorage.setItem('darkMode', isDarkMode);
+        });
+        function createGradient(ctx) {
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            if (isDarkMode) {
+                gradient.addColorStop(0, '#4a90e2');
+                gradient.addColorStop(1, 'rgba(74, 144, 226, 0.3)');
+            } else {
+                gradient.addColorStop(0, '#4a90e2');
+                gradient.addColorStop(1, 'rgba(74, 144, 226, 0.3)');
+            }
+            return gradient;
+        }
+
+        function initializeGSAPAnimations() {
+            gsap.from('.container', {
+                duration: 1,
+                opacity: 0,
+                y: 50,
+                ease: 'power3.out'
+            });
+
+            gsap.from('.control-item', {
+                duration: 0.5,
+                opacity: 0,
+                y: 20,
+                stagger: 0.1,
+                ease: 'power2.out'
+            });
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const chartType = document.getElementById('chartType').value;
+            
+            const labels = data.map(item => item.business_name);
+            const prices = data.map(item => item.price);
+            const product_name =document.getElementById('searchInput').value;
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            const config = {
+                type: chartType,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Prices of '+ product_name + ' in Birr',
+                        data: prices,
+                        backgroundColor: createGradient(ctx),
+                        borderColor: isDarkMode ? '#4a90e2' : '#4a90e2',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: isDarkMode ? '#f39c12' : '#4a90e2',
+                        pointBorderColor: '#fff',
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: isDarkMode ? '#fff' : '#000'
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        datalabels: {
+                            color: isDarkMode ? '#fff' : '#000',
+                            anchor: 'end',
+                            align: 'top',
+                            formatter: (value) => `${value} Birr`,
+                            font: {
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: isDarkMode ? '#fff' : '#000',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)',
+                            titleColor: isDarkMode ? '#fff' : '#000',
+                            bodyColor: isDarkMode ? '#fff' : '#000',
+                            borderColor: isDarkMode ? '#f39c12' : '#4a90e2',
+                            borderWidth: 1,
+                            padding: 15,
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => `Price: ${context.parsed.y} Birr`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#fff' : '#000',
+                                font: {
+                                    size: 12
+                                },
+                                callback: (value) => `${value} Birr`
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: isDarkMode ? '#fff' : '#000',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            myChart = new Chart(ctx, config);
+        }
+
+        function fetchData(searchTerm = '') {
+            fetch(`./data/data_fetch.php?product=${encodeURIComponent(searchTerm)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateChart(data);
+                    productData = data;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        fetchData("Iphone 16 Pro");
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchData(e.target.value);
+            }, 300);
+        });
+   
+        document.getElementById('chartType').addEventListener('change', () => {
+            fetchData(document.getElementById('searchInput').value);
+        });
+
+        document.getElementById('toggleAnimation').addEventListener('click', () => {
+            if (myChart) {
+                myChart.options.animation.duration = 
+                    myChart.options.animation.duration > 0 ? 0 : 2000;
+                myChart.update();
+            }
+        });
+
+
+        document.getElementById('downloadChart').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'chart.png';
+            link.href = document.getElementById('myChart').toDataURL('image/png');
+            link.click();
+        });
+
+       
+        initializeGSAPAnimations();
+       
+
+        
+        window.addEventListener('resize', () => {
+            if (myChart) {
+                myChart.resize();
+            }
+        });
+        const sidebar = document.getElementById('sidebar');
+        const toggleBtn = document.querySelector('.toggle-btn');
+        const overlay = document.querySelector('.overlay');
+
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+        });
+
+     
+        function handleMobileView() {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('collapsed');
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('mobile-active');
+                    overlay.classList.toggle('active');
+                });
+
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('mobile-active');
+                    overlay.classList.remove('active');
+                });
+            }
+        }
+
+        window.addEventListener('resize', handleMobileView);
+        handleMobileView();
+
+       
+        const darkModeToggle = document.querySelector('.dark-mode-toggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        });
+
+        
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+        }
+
+      
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                menuItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+
+       
+        document.querySelectorAll('.menu-item, .toggle-btn, .dark-mode-toggle')
+            .forEach(element => {
+                element.addEventListener('mouseenter', (e) => {
+                    e.target.style.transform = 'translateX(5px)';
+                });
+                
+                element.addEventListener('mouseleave', (e) => {
+                    e.target.style.transform = 'translateX(0)';
+                });
+            });
+         
+    
+            function useSubject(subject) {
+                document.getElementById('prompt-input').value = subject;
+                sendMessage();
+            }
+    
+            async function askGemini(prompt) {
+                try {
+                    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{
+                                    text: prompt
+                                }]
+                            }]
+                        })
+                    });
+    
+                    const data = await response.json();
+                    return data.candidates[0].content.parts[0].text;
+                } catch (error) {
+                    console.error('Error:', error);
+                    return 'An error occurred while processing your request.';
+                }
+            }
+    
+            function addMessage(message, isUser) {
+                const chatContainer = document.getElementById('chat-container');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+                
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'message-header';
+                
+                const avatar = document.createElement('img');
+                avatar.className = 'avatar';
+                avatar.src = isUser 
+                    ? 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%23666"/></svg>'
+                    : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="%232196F3"/></svg>';
+                
+                headerDiv.appendChild(avatar);
+                headerDiv.appendChild(document.createTextNode(isUser ? 'You' : 'DV AI'));
+                messageDiv.appendChild(headerDiv);
+    
+                const contentDiv = document.createElement('div');
+                contentDiv.innerHTML = marked.parse(message);
+                messageDiv.appendChild(contentDiv);
+    
+              
+                if (!isUser && message.includes('```')) {
+                    const codeBlocks = contentDiv.querySelectorAll('pre code');
+                    codeBlocks.forEach(block => {
+                        const copyButton = document.createElement('button');
+                        copyButton.className = 'copy-button';
+                        copyButton.textContent = 'Copy';
+                        copyButton.onclick = () => {
+                            navigator.clipboard.writeText(block.textContent);
+                            copyButton.textContent = 'Copied!';
+                            setTimeout(() => copyButton.textContent = 'Copy', 2000);
+                        };
+                        block.parentElement.style.position = 'relative';
+                        block.parentElement.appendChild(copyButton);
+                    });
+                }
+    
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                hljs.highlightAll();
+            }
+    
+            function addTypingIndicator() {
+                const chatContainer = document.getElementById('chat-container');
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+                chatContainer.appendChild(typingDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return typingDiv;
+            }
+    
+            async function sendMessage() {
+                const promptInput = document.getElementById('prompt-input');
+                const userMessage = promptInput.value.trim();
+                
+                if (userMessage === '') return;
+                
+                const product_data_parser = JSON.stringify(productData);
+                const product_name =document.getElementById('searchInput').value;
+                const formattedProducts = productData.map(item => 
+                    `this seller ${item.business_name} sell only  one product at ${item.price} ETB (Ethiopian Birr)  cost and the product they sell is called ${product_name} )`
+                ).join('\n');
+                
+                const contextMessage = `${userMessage}\n\nHere are the available products and their prices by Birr:\n${formattedProducts}\n\nAll prices are fixed and shown in Ethiopian Birr (ETB). My Balance is ${user_balance}`;
+                
+                
+              
+                addMessage(userMessage, true);
+                promptInput.value = '';
+    
+                const typingIndicator = addTypingIndicator();
+                
+                const aiResponse = await askGemini(contextMessage);
+                typingIndicator.remove();
+                addMessage(aiResponse, false);
+            }
+    
+            
+    
+            document.getElementById('prompt-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+    </script>
+</body>
+</html>
