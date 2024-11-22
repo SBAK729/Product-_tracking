@@ -145,17 +145,35 @@
             });
         }
 
+        let lastUpdateTime = Date.now();
+
         function updateChart(data) {
             const ctx = document.getElementById('myChart').getContext('2d');
             const chartType = document.getElementById('chartType').value;
             
+            // Generate a timestamp-based key
+            const key = `search_${lastUpdateTime}`;
+            
+            // Fetch stored data
+            let storedData = JSON.parse(localStorage.getItem(key)) || [];
+            
+            // Append new data to the stored data
+            storedData.push({
+                labels: data.map(item => item.business_name),
+                prices: data.map(item => item.price),
+                timestamp: Date.now()
+            });
+            
+            // Update localStorage with the new data
+            localStorage.setItem(key, JSON.stringify(storedData));
+            
+            // Prepare data for the chart
             const labels = data.map(item => item.business_name);
             const prices = data.map(item => item.price);
-            const product_name =document.getElementById('searchInput').value;
-            if (myChart) {
-                myChart.destroy();
-            }
-
+            const product_name = document.getElementById('searchInput').value;
+            
+            // Rest of your existing chart configuration...
+            
             const config = {
                 type: chartType,
                 data: {
@@ -247,10 +265,19 @@
                     }
                 }
             };
-
+        
             myChart = new Chart(ctx, config);
+            
+            // Update lastUpdateTime
+            lastUpdateTime = Date.now();
         }
-
+        
+        // Function to display all stored searches
+        function displayStoredSearches() {
+            const storedData = JSON.parse(localStorage.getItem('all_searches')) || [];
+            console.log('All stored searches:', storedData);
+        }
+        
         function fetchData(searchTerm = '') {
             fetch(`./data/data_fetch.php?product=${encodeURIComponent(searchTerm)}`)
                 .then(response => {
@@ -262,6 +289,7 @@
                 .then(data => {
                     updateChart(data);
                     productData = data;
+                    window.localStorage.setItem('chatData', productData);
                 })
                 .catch(error => console.error('Error:', error));
         }
