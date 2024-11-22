@@ -25,14 +25,14 @@ This project aims to develop a comprehensive AI-driven product recommendation sy
 ## ⚙️ Technologies Used
 
 - **Programming Languages**: Python, JavaScript
-- **Frameworks**: Flask/Django (for backend), React/Vue.js (for frontend)
-- **Databases**: MySQL/PostgreSQL
-- **Machine Learning**: Scikit-learn, TensorFlow/PyTorch (for recommendation algorithms)
+- **Frameworks**: -
+- **Databases**: MySQL
+- **Machine Learning**: - for recommendation algorithms
 - **Data Visualization**: Chart.js, D3.js
-- **Chatbot Integration**: Dialogflow, Microsoft Bot Framework
+- **Chatbot Integration**: -
 
 ## 📦 Installation
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ai-product-recommendation-system.git
+   git clone https://github.com/SBAK729/Product-_tracking.git
