@@ -306,7 +306,7 @@ $today_alerts = $today_alerts_result ? $today_alerts_result->fetch_assoc()['coun
         }
     }
     .nav-menu {
-    position: relative; 
+    position: relative; /* Ensure the menu items are positioned correctly */
 }
 
 .sub-menu {
@@ -314,7 +314,7 @@ $today_alerts = $today_alerts_result ? $today_alerts_result->fetch_assoc()['coun
     padding-left: 1rem; 
     display: none; 
     position: absolute; 
-    left: 50%; 
+    left: 100%; 
     top: 0; 
     background: var(--card); 
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); 
@@ -323,11 +323,11 @@ $today_alerts = $today_alerts_result ? $today_alerts_result->fetch_assoc()['coun
 }
 
 .nav-item:hover .sub-menu {
-    display: block;
+    display: block; /* Show sub-menu on hover */
 }
 
 .nav-item {
-    position: relative; 
+    position: relative; /* For positioning the sub-menu */
 }
     /* Loading Animation */
     .loading-spinner {
